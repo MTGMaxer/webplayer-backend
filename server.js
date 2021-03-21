@@ -57,7 +57,6 @@ function sendStaticFile(url, res) {
     let filePath = path.join('static', decodeURIComponent(url));
     fs.readFile(filePath, (err, data) => {
         if (err) {
-            console.error(err);
             notFound(res);
         } else {
             res.writeHead(200, { 'Content-Type': getMimeTypeForUrl(url) });
@@ -109,15 +108,16 @@ function sendAlbumContent(req, res) {
                 console.error(err);
                 serverError(res);
             } else {
-                let musicFiles = files.filter((file) => path.extname(file) === '.mp3');
-                Promise.all(musicFiles.map(async (file) => {
+                let musicFiles = files.filter((file) => path.extname(file) === '.mp3').sort();
+                Promise.all(musicFiles.map(async (file, index) => {
                     let filePath = path.join(albumPath, file);
                     let metadata = await mm.parseFile(filePath);
                     return {
                         filename: file,
+                        albumName: decodedName,
                         title: metadata.common.title || file,
                         albumTitle: metadata.common.album || decodedName,
-                        index: metadata.common.track.no,
+                        index: metadata.common.track.no || index + 1,
                         size: fs.statSync(filePath).size,
                     };
                 })).then((tracksData) => sendJson(res, tracksData));
