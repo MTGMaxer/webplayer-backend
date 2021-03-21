@@ -54,9 +54,10 @@ function getMimeTypeForUrl(url) {
 }
 
 function sendStaticFile(url, res) {
-    let filePath = path.join('static', url);
+    let filePath = path.join('static', decodeURIComponent(url));
     fs.readFile(filePath, (err, data) => {
         if (err) {
+            console.error(err);
             notFound(res);
         } else {
             res.writeHead(200, { 'Content-Type': getMimeTypeForUrl(url) });
@@ -101,19 +102,26 @@ function isDirectory(filePath) {
 
 function sendAlbumContent(req, res) {
     parseBody(req, (data) => {
-        let albumPath = path.join(ALBUMS_PATH, data.albumPath);
+        let decodedName = decodeURIComponent(data.albumName);
+        let albumPath = path.join(ALBUMS_PATH, decodedName);
         fs.readdir(albumPath, (err, files) => {
-            let musicFiles = files.filter((file) => path.extname(file) === '.mp3');
-            Promise.all(musicFiles.map(async (file) => {
-                let filePath = path.join(albumPath, file);
-                let metadata = await mm.parseFile(filePath);
-                return {
-                    filename: file,
-                    title: metadata.common.title || file,
-                    albumTitle: metadata.common.album || albumPath,
-                    size: fs.statSync(filePath).size,
-                };
-            })).then((tracksData) => sendJson(res, tracksData));
+            if (err) {
+                console.error(err);
+                serverError(res);
+            } else {
+                let musicFiles = files.filter((file) => path.extname(file) === '.mp3');
+                Promise.all(musicFiles.map(async (file) => {
+                    let filePath = path.join(albumPath, file);
+                    let metadata = await mm.parseFile(filePath);
+                    return {
+                        filename: file,
+                        title: metadata.common.title || file,
+                        albumTitle: metadata.common.album || decodedName,
+                        index: metadata.common.track.no,
+                        size: fs.statSync(filePath).size,
+                    };
+                })).then((tracksData) => sendJson(res, tracksData));
+            }
         });
     });
 }
@@ -134,7 +142,8 @@ function notImplemented(res) {
 }
 
 function sendJson(res, obj) {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
+    // TODO learn more about CORS
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(obj));
 }
 

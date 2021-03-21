@@ -2,13 +2,13 @@
   "name": "webplayer-backend",
   "version": "1.0.0",
   "description": "",
+  "author": "Michał Gackowski",
+  "license": "MIT",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "serve": "node .\\server.js"
   },
-  "author": "Michał Gackowski",
-  "license": "MIT",
   "devDependencies": {
     "eslint": "^7.22.0",
     "eslint-config-airbnb-base": "^14.2.1",
