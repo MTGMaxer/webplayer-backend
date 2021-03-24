@@ -2,3 +2,4 @@ node_modules
 static/media/albums/*
 !static/media/albums/.gitkeep
 .eslintrc.json
+db/*

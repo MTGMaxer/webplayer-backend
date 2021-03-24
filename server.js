@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const mm = require('music-metadata');
 
+const playlist = require('./playlist');
+
 const PORT = 3000;
 
 const server = http.createServer((req, res) => {
@@ -75,8 +77,16 @@ function handlePost(req, res) {
             sendAlbumContent(req, res);
             break;
 
+        case '/getPlaylist':
+            sendPlaylist(req, res);
+            break;
+
+        case '/addTrackToPlaylist':
+            addTrackToPlaylist(req, res);
+            break;
+
         default:
-            notFound(res);
+            notFoundJson(res);
             break;
     }
 }
@@ -87,7 +97,7 @@ function sendAlbums(req, res) {
     fs.readdir(ALBUMS_PATH, (err, files) => {
         if (err) {
             console.error(err.message);
-            serverError(res);
+            serverErrorJson(res);
         } else {
             let albums = files.filter((file) => isDirectory(path.join(ALBUMS_PATH, file)));
             sendJson(res, albums);
@@ -106,7 +116,7 @@ function sendAlbumContent(req, res) {
         fs.readdir(albumPath, (err, files) => {
             if (err) {
                 console.error(err);
-                serverError(res);
+                serverErrorJson(res);
             } else {
                 let musicFiles = files.filter((file) => path.extname(file) === '.mp3').sort();
                 Promise.all(musicFiles.map(async (file, index) => {
@@ -126,6 +136,29 @@ function sendAlbumContent(req, res) {
     });
 }
 
+function sendPlaylist(req, res) {
+    playlist.getTracks((err, tracks) => {
+        if (err) {
+            console.error(err);
+            serverErrorJson(res);
+        } else {
+            sendJson(res, tracks);
+        }
+    });
+}
+
+function addTrackToPlaylist(req, res) {
+    parseBody(req, (track) => {
+        playlist.addTrack(track, (err, newTrack) => {
+            if (err) {
+                serverErrorJson(res);
+            } else {
+                sendJson(res, newTrack);
+            }
+        });
+    });
+}
+
 function notFound(res) {
     res.writeHead(404, { 'Content-Type': 'text/html' });
     res.end('<h1>Not Found</h1>');
@@ -137,14 +170,24 @@ function serverError(res) {
 }
 
 function notImplemented(res) {
-    res.writeHead(501, { 'Content-Type': 'text/html' });
-    res.end('<h1>Not Implemented</h1>');
+    res.writeHead(501, { 'Content-Type': 'text/plain' });
+    res.end('Not Implemented');
 }
 
 function sendJson(res, obj) {
     // TODO learn more about CORS
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(obj));
+}
+
+function notFoundJson(res) {
+    res.writeHead(404, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ Status: 'Not Found' }));
+}
+
+function serverErrorJson(res) {
+    res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ Status: 'Internal Server Error' }));
 }
 
 function parseBody(req, callback) {
