@@ -5,7 +5,7 @@ const mm = require('music-metadata');
 
 const playlist = require('./playlist');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const server = http.createServer((req, res) => {
     switch (req.method) {
@@ -30,7 +30,7 @@ function handleGet(req, res) {
             break;
 
         default:
-            sendStaticFile(req.url, res);
+            sendStaticFile(req, res);
             break;
     }
 }
@@ -55,14 +55,53 @@ function getMimeTypeForUrl(url) {
     return MIME_TYPES[path.extname(url).toLowerCase()] || DEFAULT_MIME;
 }
 
-function sendStaticFile(url, res) {
+function sendStaticFile(req, res) {
+    let { url } = req;
     let filePath = path.join('static', decodeURIComponent(url));
-    fs.readFile(filePath, (err, data) => {
+
+    fs.stat(filePath, (err, stats) => {
         if (err) {
             notFound(res);
+            return;
+        }
+        let fileSize = stats.size;
+        let headers = {
+            'Accept-Ranges': 'bytes',
+            'Content-Type': getMimeTypeForUrl(url),
+            'Content-Length': fileSize,
+        };
+
+        let reqRange = req.headers.range;
+        if (reqRange) {
+            let [start, end] = reqRange.replace(/bytes=/, '').split('-');
+            start = parseInt(start);
+            end = end ? parseInt(end) : fileSize - 1;
+
+            if (!Number.isNaN(start) && Number.isNaN(end)) {
+                end = fileSize - 1;
+            }
+
+            if (Number.isNaN(start) && !Number.isNaN(end)) {
+                start = fileSize - end;
+                end = fileSize - 1;
+            }
+
+            if (start >= fileSize || end >= fileSize) {
+                res.writeHead(416, { 'Content-Range': `bytes */${fileSize}` });
+                res.end();
+                return;
+            }
+
+            headers['Content-Length'] = end - start + 1;
+            headers['Content-Range'] = `bytes ${start}-${end}/${fileSize}`;
+            res.writeHead(206, headers);
+
+            let readStream = fs.createReadStream(filePath, { start, end });
+            readStream.pipe(res);
         } else {
-            res.writeHead(200, { 'Content-Type': getMimeTypeForUrl(url) });
-            res.end(data);
+            res.writeHead(200, headers);
+            let readStream = fs.createReadStream(filePath);
+            readStream.pipe(res);
         }
     });
 }
