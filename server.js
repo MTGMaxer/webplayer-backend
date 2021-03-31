@@ -1,6 +1,8 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
+const qs = require('querystring');
+const formidable = require('formidable');
 const mm = require('music-metadata');
 
 const playlist = require('./playlist');
@@ -55,12 +57,16 @@ function getMimeTypeForUrl(url) {
     return MIME_TYPES[path.extname(url).toLowerCase()] || DEFAULT_MIME;
 }
 
+const URL_ALIASES = {
+    '/admin': '/admin.html',
+};
+
 function sendStaticFile(req, res) {
-    let { url } = req;
+    let url = URL_ALIASES[req.url] || req.url;
     let filePath = path.join('static', decodeURIComponent(url));
 
     fs.stat(filePath, (err, stats) => {
-        if (err) {
+        if (err || stats.isDirectory()) {
             notFound(res);
             return;
         }
@@ -124,6 +130,10 @@ function handlePost(req, res) {
             addTrackToPlaylist(req, res);
             break;
 
+        case '/upload':
+            albumUpload(req, res);
+            break;
+
         default:
             notFoundJson(res);
             break;
@@ -149,7 +159,7 @@ function isDirectory(filePath) {
 }
 
 function sendAlbumContent(req, res) {
-    parseBody(req, (data) => {
+    parseJsonBody(req, (data) => {
         let decodedName = decodeURIComponent(data.albumName);
         let albumPath = path.join(ALBUMS_PATH, decodedName);
         fs.readdir(albumPath, (err, files) => {
@@ -187,7 +197,7 @@ function sendPlaylist(req, res) {
 }
 
 function addTrackToPlaylist(req, res) {
-    parseBody(req, (track) => {
+    parseJsonBody(req, (track) => {
         playlist.addTrack(track, (err, newTrack) => {
             if (err) {
                 serverErrorJson(res);
@@ -196,6 +206,53 @@ function addTrackToPlaylist(req, res) {
             }
         });
     });
+}
+
+function albumUpload(req, res) {
+    const form = formidable({
+        multiples: true,
+        keepExtensions: true,
+        uploadDir: 'static/media/albums/Untitled Upload',
+    });
+    let uploadedFiles = [];
+    form.parse(req, (err, fields, files) => {
+        if (err) {
+            console.error(err);
+            serverErrorJson(res);
+        } else {
+            files = files.file;
+            if (!Array.isArray(files)) {
+                files = [files];
+            }
+            let albumName = fields.albumname || 'Untitled Upload';
+            albumName = albumName.trim();
+            let newDir = path.join(__dirname, 'static/media/albums', albumName);
+            files.forEach((file) => {
+                if (!fs.existsSync(newDir)) {
+                    fs.mkdir(newDir, (mkdirErr) => {
+                        if (!mkdirErr) {
+                            renameFile(file, newDir, uploadedFiles);
+                        }
+                    });
+                } else {
+                    renameFile(file, newDir, uploadedFiles);
+                }
+                uploadedFiles.push(file.name);
+            });
+        }
+    });
+    form.on('end', () => {
+        sendJson(res, uploadedFiles);
+    });
+}
+
+function renameFile(file, newDir) {
+    fs.rename(path.join(__dirname, file.path), path.join(newDir, file.name),
+        (renameErr) => {
+            if (renameErr) {
+                console.error(renameErr);
+            }
+        });
 }
 
 function notFound(res) {
@@ -214,7 +271,6 @@ function notImplemented(res) {
 }
 
 function sendJson(res, obj) {
-    // TODO learn more about CORS
     res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
     res.end(JSON.stringify(obj));
 }
@@ -229,10 +285,16 @@ function serverErrorJson(res) {
     res.end(JSON.stringify({ Status: 'Internal Server Error' }));
 }
 
-function parseBody(req, callback) {
+function parseJsonBody(req, callback) {
     let data = [];
     req.on('data', (chunk) => data.push(chunk));
     req.on('end', () => callback(JSON.parse(data.join(''))));
+}
+
+function parseBody(req, callback) {
+    let data = [];
+    req.on('data', (chunk) => data.push(chunk));
+    req.on('end', () => callback(qs.parse(data.join(''))));
 }
 
 server.listen(PORT);

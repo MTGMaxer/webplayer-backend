@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File Upload</title>
+    <script src="js/lib/jquery-3.6.0.js"></script>
+    <script src="js/upload.js"></script>
+    <style>
+        body {
+            margin: 0px;
+        }
+
+        #droparea {
+            background-color: dodgerblue;
+            font-family: sans-serif;
+            font-size: 2.5em;
+            text-align: center;
+            color: white;
+            height: 150px;
+            display: flex;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        #namediv {
+            height: 50px;
+        }
+
+        #nameinput {
+            box-sizing: border-box;
+            height: 50px;
+            width: 100%;
+            font-size: 2em;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="main">
+        <div id="droparea">
+            Drag files here
+        </div>
+        <div id="namediv">
+            <input type="text" id="nameinput" placeholder="Album name">
+        </div>
+    </div>
+
+</body>
+
+</html>

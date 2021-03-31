@@ -1,5 +1,8 @@
 node_modules
 static/media/albums/*
 !static/media/albums/.gitkeep
+static/media/albums/Untitled\ Upload/*
+!static/media/albums/Untitled\ Upload/
+!static/media/albums/Untitled\ Upload/.gitkeep
 .eslintrc.json
 db/*
