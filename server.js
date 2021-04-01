@@ -51,6 +51,7 @@ const MIME_TYPES = {
     '.txt': 'text/plain',
     '.exe': 'application/octet-stream',
     '.mp3': 'audio/mpeg',
+    '.svg': 'image/svg+xml',
 };
 
 function getMimeTypeForUrl(url) {

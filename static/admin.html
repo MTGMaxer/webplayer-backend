@@ -6,6 +6,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>File Upload</title>
+    <link rel="shortcut icon" href="img/favicon.ico" type="image/x-icon">
     <script src="js/lib/jquery-3.6.0.js"></script>
     <script src="js/upload.js"></script>
     <style>
@@ -36,16 +37,62 @@
             font-size: 2em;
             text-align: center;
         }
+
+        .fileentry {
+            height: 100px;
+            background-color: whitesmoke;
+            display: flex;
+        }
+
+        .filename-container {
+            padding: 4px;
+            text-align: start;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            font-family: sans-serif;
+            color: darkviolet;
+            font-size: 1.6em;
+        }
+
+        .extimg {
+            box-sizing: border-box;
+            height: 100px;
+            width: 100px;
+            padding: 5px;
+        }
+
+        #waitdiv {
+            position: absolute;
+            top: 0px;
+            left: 0px;
+            width: 100vw;
+            height: 100vh;
+            display: none;
+            background-color: gray;
+            opacity: 40%;
+            text-align: center;
+            flex-direction: column;
+            justify-content: center;
+            color: white;
+            font-size: 7em;
+            font-family: sans-serif;
+        }
     </style>
 </head>
 
 <body>
     <div id="main">
+        <div id="waitdiv">
+            Uploading...
+        </div>
         <div id="droparea">
             Drag files here
         </div>
         <div id="namediv">
             <input type="text" id="nameinput" placeholder="Album name">
+        </div>
+        <div id="files-container">
         </div>
     </div>
 

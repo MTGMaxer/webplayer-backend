@@ -1,8 +1,9 @@
 $(() => {
     const html = $('html');
-    const mainDiv = $('#main');
+    const filesDiv = $('#files-container');
     const dropDiv = $('#droparea');
     const nameInput = $('#nameinput');
+    const waitDiv = $('#waitdiv');
 
     let enterTarget = null;
 
@@ -35,6 +36,8 @@ $(() => {
     });
 
     dropDiv.on('drop', (e) => {
+        waitDiv.css('display', 'flex');
+        dropDiv.text('Drag files here');
         e.preventDefault();
         let { files } = e.originalEvent.dataTransfer;
         if (files) {
@@ -52,10 +55,44 @@ $(() => {
                     contentType: false,
                     processData: false,
                     success(data) {
-                        console.log(data);
+                        waitDiv.css('display', 'none');
+                        filesDiv.empty();
+                        data.sort();
+                        addFileEntries(data);
                     },
                 });
             }
         }
     });
+
+    const EXT_IMGS = {
+        '': '/img/default.svg',
+        mp3: '/img/mp3.svg',
+        jpg: '/img/jpg.svg',
+    };
+
+    function fileExtension(filename) {
+        let index = filename.lastIndexOf('.');
+        if (index > -1) {
+            return filename.substring(index + 1, filename.length);
+        }
+        return '';
+    }
+
+    function addFileEntries(files) {
+        files.forEach((file) => {
+            let fileDiv = $('<div class="fileentry">');
+            let ext = fileExtension(file);
+            let imgUrl = EXT_IMGS[ext] || '/img/default.svg';
+            let extImg = $('<img class="extimg">');
+            extImg.attr('src', imgUrl);
+            extImg.attr('alt', ext);
+
+            let filenameDiv = $('<div class="filename-container">');
+            filenameDiv.text(file);
+
+            fileDiv.append(extImg, filenameDiv);
+            filesDiv.append(fileDiv);
+        });
+    }
 });
