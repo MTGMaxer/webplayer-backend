@@ -67,8 +67,16 @@ function sendStaticFile(req, res) {
     let filePath = path.join('static', decodeURIComponent(url));
 
     fs.stat(filePath, (err, stats) => {
-        if (err || stats.isDirectory()) {
-            notFound(res);
+        if (err) {
+            if (path.basename(filePath, '.jpg') === 'cover') {
+                redirect(res, '/img/default_cover.jpg');
+            } else {
+                notFound(res);
+            }
+            return;
+        }
+        if (stats.isDirectory()) {
+            forbidden(res);
             return;
         }
         let fileSize = stats.size;
@@ -276,6 +284,16 @@ function albumUpload(req, res) {
 
 function renameFile(file) {
     return fs.promises.rename(file.path, path.join(path.dirname(file.path), file.name));
+}
+
+function redirect(res, location) {
+    res.writeHead(302, { Location: location });
+    res.end();
+}
+
+function forbidden(res) {
+    res.writeHead(403, { 'Content-Type': 'text/html' });
+    res.end('<h1>Forbidden</h1>');
 }
 
 function notFound(res) {
