@@ -232,7 +232,7 @@ function albumUpload(req, res) {
                 if (!fs.existsSync(newDir)) {
                     fs.mkdir(newDir, (mkdirErr) => {
                         if (!mkdirErr) {
-                            renameFile(file, newDir, uploadedFiles);
+                            renameFile(file, newDir);
                         }
                     });
                 } else {

@@ -36,11 +36,11 @@ $(() => {
     });
 
     dropDiv.on('drop', (e) => {
-        waitDiv.css('display', 'flex');
         dropDiv.text('Drag files here');
         e.preventDefault();
         let { files } = e.originalEvent.dataTransfer;
-        if (files) {
+        if (files && files.length > 0) {
+            waitDiv.css('display', 'flex');
             let filesArr = [...files];
             if (filesArr.some((file) => !file.type)) {
                 dropDiv.text('Directories and/or files without extension not allowed');
