@@ -60,6 +60,11 @@ $(() => {
                         data.sort();
                         addFileEntries(data);
                     },
+                    error() {
+                        waitDiv.css('display', 'none');
+                        filesDiv.empty();
+                        dropDiv.text('Error');
+                    },
                 });
             }
         }

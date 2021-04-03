@@ -149,14 +149,18 @@ function sendAlbums(req, res) {
             console.error(err.message);
             serverErrorJson(res);
         } else {
-            let albums = files.filter((file) => isDirectory(path.join(ALBUMS_PATH, file)));
-            sendJson(res, albums);
+            Promise.all(files.map(async (file) => {
+                let stats = await fs.promises.stat(path.join(ALBUMS_PATH, file));
+                return {
+                    isDir: stats.isDirectory(),
+                    name: file,
+                };
+            }))
+                .then((mapped) => mapped.filter((obj) => obj.isDir))
+                .then((filtered) => filtered.map((obj) => obj.name))
+                .then((albums) => sendJson(res, albums));
         }
     });
-}
-
-function isDirectory(filePath) {
-    return fs.statSync(filePath).isDirectory();
 }
 
 function sendAlbumContent(req, res) {
@@ -172,13 +176,14 @@ function sendAlbumContent(req, res) {
                 Promise.all(musicFiles.map(async (file, index) => {
                     let filePath = path.join(albumPath, file);
                     let metadata = await mm.parseFile(filePath);
+                    let stats = await fs.promises.stat(filePath);
                     return {
                         filename: file,
                         albumName: decodedName,
                         title: metadata.common.title || file,
                         albumTitle: metadata.common.album || decodedName,
                         index: metadata.common.track.no || index + 1,
-                        size: fs.statSync(filePath).size,
+                        size: stats.size,
                     };
                 })).then((tracksData) => sendJson(res, tracksData));
             }
@@ -209,51 +214,68 @@ function addTrackToPlaylist(req, res) {
     });
 }
 
+function newAlbumName() {
+    const rd = () => Math.trunc(Math.random() * 10);
+    return Date.now().toString().substring(8) + rd() + rd() + rd() + rd() + rd();
+}
+
 function albumUpload(req, res) {
-    const form = formidable({
-        multiples: true,
-        keepExtensions: true,
-        uploadDir: 'static/media/albums/Untitled Upload',
-    });
-    let uploadedFiles = [];
-    form.parse(req, (err, fields, files) => {
-        if (err) {
-            console.error(err);
-            serverErrorJson(res);
-        } else {
-            files = files.file;
-            if (!Array.isArray(files)) {
-                files = [files];
-            }
-            let albumName = fields.albumname || 'Untitled Upload';
-            albumName = albumName.trim();
-            let newDir = path.join(__dirname, 'static/media/albums', albumName);
-            files.forEach((file) => {
-                if (!fs.existsSync(newDir)) {
-                    fs.mkdir(newDir, (mkdirErr) => {
-                        if (!mkdirErr) {
-                            renameFile(file, newDir);
+    let randomName = newAlbumName();
+    let uploadDir = path.join(ALBUMS_PATH, randomName);
+    fs.access(uploadDir, (nonexistent) => {
+        if (nonexistent) {
+            fs.mkdir(uploadDir, (mkdirErr) => {
+                if (mkdirErr) {
+                    serverErrorJson(res);
+                } else {
+                    const form = formidable({
+                        multiples: true,
+                        keepExtensions: true,
+                        uploadDir,
+                    });
+                    form.parse(req, (err, fields, files) => {
+                        if (err) {
+                            console.error(err);
+                            serverErrorJson(res);
+                        } else {
+                            files = files.file;
+                            if (!Array.isArray(files)) {
+                                files = [files];
+                            }
+                            let customName = fields.albumname;
+                            if (customName) {
+                                customName = customName.trim();
+                            }
+                            Promise.all(files.map(async (file) => {
+                                await renameFile(file);
+                                return file.name;
+                            }))
+                                .then(async (uploadedFiles) => {
+                                    if (customName) {
+                                        let newDir = path.join(ALBUMS_PATH, customName);
+                                        await fs.promises.rename(uploadDir, newDir);
+                                    }
+                                    return uploadedFiles;
+                                })
+                                .then((uploadedFiles) => {
+                                    sendJson(res, uploadedFiles);
+                                })
+                                .catch((error) => {
+                                    console.error(error);
+                                    serverErrorJson(res);
+                                });
                         }
                     });
-                } else {
-                    renameFile(file, newDir, uploadedFiles);
                 }
-                uploadedFiles.push(file.name);
             });
+        } else {
+            serverErrorJson(res);
         }
-    });
-    form.on('end', () => {
-        sendJson(res, uploadedFiles);
     });
 }
 
-function renameFile(file, newDir) {
-    fs.rename(path.join(__dirname, file.path), path.join(newDir, file.name),
-        (renameErr) => {
-            if (renameErr) {
-                console.error(renameErr);
-            }
-        });
+function renameFile(file) {
+    return fs.promises.rename(file.path, path.join(path.dirname(file.path), file.name));
 }
 
 function notFound(res) {
